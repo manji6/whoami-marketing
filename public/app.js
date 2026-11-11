@@ -753,6 +753,125 @@
     items.forEach((it) => io.observe(it));
   }
 
+  // ---------- Export (JSON) ----------
+  // 画面に出している情報を、整形前の生データ+解釈付きで1つのJSONにまとめる。ブラウザ内で完結し、送信はしない。
+  let exportData = null;
+  function buildExport(S, params, docCookies, referrer, channel, uaData) {
+    const tz = Intl.DateTimeFormat().resolvedOptions();
+    const conn = navigator.connection || {};
+    const serverCookies = (S && S.cookies) || [];
+    const cNames = new Set(docCookies.map((c) => c.name));
+    const sNames = new Set(serverCookies.map((c) => c.name));
+    const serverRef = (S && S.headers && S.headers.referer) || null;
+    const ck = (c) => {
+      const info = cookieInfo(c.name, c.value);
+      return { name: c.name, value: safeDecode(c.value), identifiedAs: info ? info.label : null, decoded: info ? info.decoded : null };
+    };
+    const al = S && S.headers && S.headers["accept-language"];
+    const ls = storageKeys(localStorage), ss = storageKeys(sessionStorage);
+    const dnt = navigator.doNotTrack || window.doNotTrack || null;
+
+    return {
+      _meta: {
+        tool: "whoami-marketing",
+        schemaVersion: 1,
+        origin: location.origin,
+        exportedAt: new Date().toISOString(),
+        notice:
+          "このファイルにはIPアドレス、Cookie値、GA Client ID、URLパラメータなど個人や端末を特定しうる情報が含まれます。第三者に共有・公開する前に内容を確認し、必要に応じて値を削除またはマスクしてください。",
+      },
+      summary: {
+        ip: (S && S.network && S.network.ip) || null,
+        channelGuess: channel,
+        referrer: referrer || null,
+        trackingParamCount: params.filter((p) => isTrackingParam(p.name)).length,
+        identifiedCookieCount: docCookies.filter((c) => cookieInfo(c.name, c.value)).length,
+        browserCookieCount: docCookies.length,
+      },
+      page: {
+        url: location.href,
+        host: location.host,
+        path: location.pathname,
+        search: location.search || null,
+        hash: location.hash || null,
+        title: document.title,
+        characterSet: document.characterSet,
+        visibilityState: document.visibilityState,
+        historyLength: history.length,
+        navigation: getNav(),
+      },
+      referrer: {
+        client: referrer || null,
+        serverHeader: serverRef,
+        match: (referrer || "") === (serverRef || ""),
+      },
+      params: params.map((p) => ({ name: p.name, value: safeDecode(p.value), source: p.from, description: paramDesc(p.name) })),
+      cookies: {
+        browser: docCookies.map(ck),
+        server: serverCookies.map(ck),
+        serverOnly: [...sNames].filter((n) => !cNames.has(n)),
+        browserOnly: [...cNames].filter((n) => !sNames.has(n)),
+      },
+      server: S
+        ? { generatedAt: S.generatedAt, request: S.request, network: S.network, bot: S.bot, headers: S.headers, cfExtra: S.cfExtra }
+        : null,
+      crosscheck: S
+        ? {
+            timezone: { browser: tz.timeZone, serverEstimate: S.network.timezone, match: tz.timeZone === S.network.timezone },
+            language: { browser: navigator.language, acceptLanguage: al || null },
+            userAgent: { match: (S.headers["user-agent"] || "") === navigator.userAgent },
+          }
+        : null,
+      browser: {
+        userAgent: navigator.userAgent,
+        userAgentData: uaData,
+        platform: navigator.platform,
+        vendor: navigator.vendor,
+        language: navigator.language,
+        languages: navigator.languages ? [...navigator.languages] : [],
+        timeZone: tz.timeZone,
+        utcOffsetMinutes: -new Date().getTimezoneOffset(),
+        screen: { width: screen.width, height: screen.height, availWidth: screen.availWidth, availHeight: screen.availHeight, colorDepth: screen.colorDepth, orientation: screen.orientation ? screen.orientation.type : null },
+        viewport: { width: innerWidth, height: innerHeight },
+        devicePixelRatio: window.devicePixelRatio,
+        maxTouchPoints: navigator.maxTouchPoints,
+        hardwareConcurrency: navigator.hardwareConcurrency,
+        deviceMemoryGB: navigator.deviceMemory ?? null,
+        connection: conn.effectiveType ? { effectiveType: conn.effectiveType, downlinkMbps: conn.downlink, rttMs: conn.rtt, saveData: !!conn.saveData } : null,
+        online: navigator.onLine,
+        webdriver: navigator.webdriver ?? null,
+        prefers: {
+          colorSchemeDark: mm("(prefers-color-scheme: dark)"),
+          reducedMotion: mm("(prefers-reduced-motion: reduce)"),
+          standalone: mm("(display-mode: standalone)"),
+          coarsePointer: mm("(pointer: coarse)"),
+        },
+      },
+      privacy: {
+        cookieEnabled: navigator.cookieEnabled,
+        doNotTrack: dnt,
+        globalPrivacyControl: navigator.globalPrivacyControl ?? null,
+        localStorageKeys: ls,
+        sessionStorageKeys: ss,
+      },
+    };
+  }
+
+  function downloadJSON() {
+    if (!exportData) { toast("NO DATA"); return; }
+    exportData._meta.exportedAt = new Date().toISOString();
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const d = new Date(), p = (x) => String(x).padStart(2, "0");
+    const stamp = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+    const a = h("a", { href: url, download: `whoami-marketing_${stamp}.json` });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    toast("EXPORTED // IP・Cookie値を含みます");
+  }
+
   // ---------- 描画 ----------
   async function main() {
     const app = document.getElementById("app");
@@ -763,6 +882,7 @@
     const qp = Object.fromEntries(params.map((p) => [p.name, p.value]));
     const channel = guessChannel(referrer || (S && S.headers && S.headers.referer) || "", qp);
     const uaData = await getUAData();
+    exportData = buildExport(S, params, docCookies, referrer, channel, uaData);
 
     const parts = [
       sectionSummary(S, params, referrer, docCookies, channel),
@@ -825,6 +945,7 @@
   }
 
   document.getElementById("reload").addEventListener("click", () => location.reload());
+  document.getElementById("export").addEventListener("click", downloadJSON);
 
   // ---------- 起動 ----------
   const S0 = readServer();

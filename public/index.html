@@ -38,7 +38,8 @@
       <div class="console">
         <label class="prompt" for="filter">&gt;_</label>
         <input id="filter" type="search" placeholder="FILTER  項目名・値で絞り込み (例: utm, _ga, referer)" autocomplete="off" spellcheck="false">
-        <a class="btn" href="/api/info" target="_blank" rel="noopener">JSON</a>
+        <button class="btn primary" id="export" type="button" title="全項目をJSONファイルとして保存 (IP・Cookie値を含みます)">EXPORT JSON</button>
+        <a class="btn" href="/api/info" target="_blank" rel="noopener" title="サーバー側で取得した情報のみ">API</a>
         <button class="btn" id="reload" type="button">RESCAN</button>
       </div>
 
