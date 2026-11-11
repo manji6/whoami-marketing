@@ -1,4 +1,4 @@
-name: Deploy to Cloudflare Pages
+name: Deploy to Cloudflare Workers
 
 on:
   push:
@@ -21,4 +21,4 @@ jobs:
       # Secrets 未設定のフォークや初回pushでは失敗させずにスキップする
       - name: Deploy
         if: env.CLOUDFLARE_API_TOKEN != ''
-        run: npx wrangler pages deploy --project-name whoami-marketing --branch main
+        run: npx wrangler deploy

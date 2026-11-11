@@ -1,3 +1,17 @@
 name = "whoami-marketing"
-pages_build_output_dir = "./public"
+main = "src/worker.js"
 compatibility_date = "2026-01-01"
+workers_dev = true
+preview_urls = false
+
+# public/ 内のHTML/CSS/JSをテキストとしてWorkerに同梱する
+# (app.js はブラウザ向けのため、ESModuleではなくTextとして扱う)
+[[rules]]
+type = "Text"
+globs = ["../public/*.html", "../public/*.css", "../public/*.js"]
+fallthrough = false
+
+# 独自ドメイン (DNSレコードはデプロイ時にCloudflareが自動作成)
+[[routes]]
+pattern = "whoami.amanohashi.date"
+custom_domain = true

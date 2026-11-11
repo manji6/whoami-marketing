@@ -19,24 +19,26 @@
 
 ```
 public/            静的ファイル (HTML/CSS/JS, _headers)
-functions/index.js "/" にナビゲーション時のリクエスト情報をHTMLへ埋め込む (Pages Functions)
-functions/api/info.js  GET /api/info サーバー側情報のJSON
+src/worker.js      "/" にナビゲーション時のリクエスト情報をHTMLへ埋め込む / GET /api/info (サーバー側情報のJSON)
 lib/collect.js     サーバー側で情報を集める処理
+wrangler.toml      Cloudflare Workers (Static Assets) 設定。独自ドメイン whoami.amanohashi.date
 ```
 
 ## ローカル実行
 
 ```bash
 npm install
-npm run dev   # http://localhost:8788
+npm run dev   # http://localhost:8787
 ```
 
 ローカルでは `request.cf` の値 (国・ASN・Bot等) はダミーです。
 
-## デプロイ (Cloudflare Pages)
+## デプロイ (Cloudflare Workers)
+
+公開URL: https://whoami.amanohashi.date
 
 ```bash
-npx wrangler pages deploy --project-name whoami-marketing
+npx wrangler deploy
 ```
 
-GitHub Actions (`.github/workflows/deploy.yml`) は、リポジトリの Secrets に `CLOUDFLARE_API_TOKEN` (Cloudflare Pages: Edit 権限) と `CLOUDFLARE_ACCOUNT_ID` を設定すると、`main` への push で自動デプロイします。未設定の場合はデプロイ手順をスキップします。
+GitHub Actions (`.github/workflows/deploy.yml`) は、リポジトリの Secrets に `CLOUDFLARE_API_TOKEN` (Workers Scripts: Edit など) と `CLOUDFLARE_ACCOUNT_ID` を設定すると、`main` への push で自動デプロイします。未設定の場合はデプロイ手順をスキップします。
