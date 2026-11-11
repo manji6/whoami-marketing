@@ -44,14 +44,35 @@
   };
 
   const table = (rows) => h("table", null, h("tbody", null, rows));
-  const card = (title, opts, ...body) =>
-    h(
+  let secCount = 0;
+  const card = (title, opts, ...body) => {
+    const n = String(++secCount).padStart(2, "0");
+    return h(
       "section",
-      { class: "card" },
-      h("h2", null, title, opts.badge && h("span", { class: `badge ${opts.badgeClass || ""}` }, opts.badge), opts.sub && h("small", null, opts.sub)),
+      { class: `card panel${opts.wide ? " wide" : ""}`, id: `sec-${n}`, "data-title": title },
+      h("span", { class: "tick tr", "aria-hidden": "true" }),
+      h("span", { class: "tick bl", "aria-hidden": "true" }),
+      h(
+        "h2",
+        null,
+        h("span", { class: "code" }, `SEC-${n}`),
+        h("span", { class: "ttl" }, title),
+        h("span", { class: "rule", "aria-hidden": "true" }),
+        opts.badge && h("span", { class: `badge ${opts.badgeClass || ""}` }, opts.badge)
+      ),
+      opts.sub && h("p", { class: "sub" }, opts.sub),
       opts.note && h("p", { class: "note" }, opts.note),
       body
     );
+  };
+  const chip = (text, kind) => h("span", { class: `chip ${kind || ""}` }, text);
+  const NS = "http://www.w3.org/2000/svg";
+  const sv = (tag, attrs, ...kids) => {
+    const n = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs || {})) n.setAttribute(k, String(v));
+    for (const c of kids.flat()) if (c) n.append(c);
+    return n;
+  };
   const empty = (msg) => h("div", { class: "empty" }, msg);
 
   // ---------- 辞書: 広告・計測パラメータ ----------
@@ -289,23 +310,104 @@
   // ---------- セクション描画 ----------
   const tfmt = (v) => (v === true ? "はい" : v === false ? "いいえ" : v);
 
+  // 世界地図(粗い簡易ポリゴン: [経度, 緯度])。ドットパターンで塗るため輪郭は概略で足りる
+  const LAND = [
+    [[-168,66],[-156,71],[-125,70],[-95,72],[-80,63],[-65,60],[-55,50],[-70,42],[-76,35],[-81,25],[-97,26],[-97,18],[-87,21],[-83,10],[-78,8],[-86,13],[-105,20],[-118,32],[-124,40],[-124,48],[-135,58],[-150,60]],
+    [[-78,8],[-62,10],[-50,0],[-35,-6],[-40,-22],[-48,-28],[-58,-38],[-65,-45],[-70,-55],[-74,-50],[-72,-30],[-80,-6]],
+    [[-55,60],[-20,70],[-20,82],[-60,82],[-72,76]],
+    [[-10,36],[-9,43],[0,50],[10,55],[25,70],[60,70],[100,78],[140,72],[170,68],[160,55],[142,46],[130,35],[122,28],[108,20],[100,8],[104,1],[98,16],[90,22],[80,10],[73,20],[58,25],[48,30],[35,32],[28,36],[22,38],[12,44],[3,43]],
+    [[-17,21],[-10,35],[10,37],[32,31],[43,12],[51,11],[40,-15],[33,-27],[20,-35],[13,-22],[9,4],[-8,5],[-17,14]],
+    [[114,-22],[130,-12],[142,-11],[153,-26],[148,-38],[135,-35],[115,-34]],
+    [[129.5,33],[132,34.5],[136,35],[140,35.5],[141.5,38],[142,41.5],[141.5,45],[145,43.5],[141,41],[140.8,39],[140,36],[136.5,34],[135,33.5],[132,33],[130.5,31]],
+  ];
+
+  function radar(n) {
+    const W = 360, H = 180;
+    const X = (lon) => lon + 180, Y = (lat) => 90 - lat;
+    const lat = parseFloat(n && n.latitude), lon = parseFloat(n && n.longitude);
+    const has = Number.isFinite(lat) && Number.isFinite(lon);
+    const g = [];
+    for (let x = 0; x <= W; x += 30) g.push(sv("line", { class: "grat", x1: x, y1: 0, x2: x, y2: H }));
+    for (let y = 0; y <= H; y += 30) g.push(sv("line", { class: `grat${y === 90 ? " equator" : ""}`, x1: 0, y1: y, x2: W, y2: y }));
+    const land = LAND.map((poly) => sv("polygon", { class: "land", points: poly.map(([a, b]) => `${X(a)},${Y(b)}`).join(" ") }));
+    const mk = [];
+    if (has) {
+      const cx = X(lon), cy = Y(lat);
+      mk.push(
+        sv("line", { class: "xhair", x1: cx, y1: 0, x2: cx, y2: H }),
+        sv("line", { class: "xhair", x1: 0, y1: cy, x2: W, y2: cy }),
+        sv("circle", { class: "pulse", cx, cy, r: 3 }),
+        sv("circle", { class: "pulse p2", cx, cy, r: 3 }),
+        sv("circle", { class: "core", cx, cy, r: 1.8 }),
+        sv("path", { class: "lock", d: `M${cx - 7},${cy - 4}v-3h3 M${cx + 4},${cy - 7}h3v3 M${cx + 7},${cy + 4}v3h-3 M${cx - 4},${cy + 7}h-3v-3` })
+      );
+    }
+    return sv(
+      "svg",
+      { class: "radar", viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": has ? `推定位置 緯度${lat} 経度${lon}` : "位置情報なし" },
+      sv(
+        "defs", null,
+        sv("pattern", { id: "dots", width: 3, height: 3, patternUnits: "userSpaceOnUse" }, sv("circle", { cx: 1.5, cy: 1.5, r: 0.75, fill: "currentColor" })),
+        sv("linearGradient", { id: "sweepg", x1: 0, x2: 1, y1: 0, y2: 0 },
+          sv("stop", { offset: "0", "stop-color": "#22e5ff", "stop-opacity": "0" }),
+          sv("stop", { offset: "1", "stop-color": "#22e5ff", "stop-opacity": ".28" }))
+      ),
+      g, land,
+      sv("rect", { class: "sweep", x: 0, y: 0, width: 50, height: H, fill: "url(#sweepg)" }),
+      mk
+    );
+  }
+
+  function ring(pct) {
+    const R = 32, C = 2 * Math.PI * R;
+    const arc = sv("circle", { class: "arc", cx: 45, cy: 45, r: R, transform: "rotate(-90 45 45)" });
+    arc.style.setProperty("--da", `${(C * pct).toFixed(1)} ${C.toFixed(1)}`);
+    const ticks = [];
+    for (let i = 0; i < 36; i++) {
+      const a = (i / 36) * 2 * Math.PI, r1 = 40, r2 = i % 3 === 0 ? 43.5 : 42;
+      ticks.push(sv("line", { x1: 45 + r1 * Math.cos(a), y1: 45 + r1 * Math.sin(a), x2: 45 + r2 * Math.cos(a), y2: 45 + r2 * Math.sin(a) }));
+    }
+    return sv("svg", { class: "ring", viewBox: "0 0 90 90", role: "img", "aria-label": `${Math.round(pct * 100)}%` },
+      sv("g", { class: "ticks" }, ticks),
+      sv("circle", { class: "track", cx: 45, cy: 45, r: R }), arc,
+      sv("text", { x: 45, y: 46 }, `${Math.round(pct * 100)}%`));
+  }
+
   function sectionSummary(S, params, referrer, docCookies, channel) {
     const n = S && S.network;
     const ga = docCookies.find((c) => c.name === "_ga");
     const gaId = ga && /^GA\d\.\d+\.(\d+\.\d+)$/.exec(ga.value);
     const tracking = params.filter((p) => isTrackingParam(p.name)).length;
     const known = docCookies.filter((c) => cookieInfo(c.name, c.value)).length;
-    const stat = (k, v) => h("div", { class: "stat" }, h("div", { class: "k" }, k), h("div", { class: `v${isEmpty(v) ? " none" : ""}` }, isEmpty(v) ? "取得できず" : v));
+    const stat = (k, jp, v, cls) =>
+      h("div", { class: `stat ${cls || ""}` },
+        h("div", { class: "k" }, k, h("small", null, jp)),
+        h("div", Object.assign({ class: `v${isEmpty(v) ? " none" : ""}` }, isEmpty(v) ? {} : { "data-decode": "1" }), isEmpty(v) ? "取得できず" : v));
+    const f = (k, v) => h("div", null, h("div", { class: "k" }, k), h("div", { class: "v" }, isEmpty(v) ? "—" : String(v)));
+    const loc = n && [n.country, n.region, n.city].filter(Boolean).join(" / ");
+    const pct = docCookies.length ? known / docCookies.length : 0;
+
     return h(
       "div",
-      { class: "summary" },
-      stat("IPアドレス", n && n.ip),
-      stat("推定所在地", n && [n.country, n.region, n.city].filter(Boolean).join(" / ")),
-      stat("流入元 (推定)", channel),
-      stat("リファラ", referrer || "なし"),
-      stat("広告・UTMパラメータ", `${tracking} 件`),
-      stat("GA Client ID", gaId ? gaId[1] : null),
-      stat("計測系Cookie (判別済み)", `${known} / ${docCookies.length} 件`)
+      { class: "hero panel", id: "sec-00", "data-title": "概要 / 位置" },
+      h("span", { class: "tick tr", "aria-hidden": "true" }),
+      h("span", { class: "tick bl", "aria-hidden": "true" }),
+      h("div", { class: "radar-card" },
+        h("div", { class: "hud-label" }, "GEO-LOCATE // IPからの推定位置"),
+        radar(n),
+        h("div", { class: "readout" },
+          f("LAT", n && n.latitude), f("LON", n && n.longitude),
+          f("TZ", n && n.timezone), f("ASN", n && n.asn != null ? `AS${n.asn}` : null))),
+      h("div", { class: "stats" },
+        stat("IP", "IPアドレス", n && n.ip, "span2"),
+        stat("LOCATION", "推定所在地", loc, "span2"),
+        stat("CHANNEL", "流入元(推定)", channel),
+        stat("PARAMS", "広告・UTM", `${tracking} 件`),
+        stat("REFERRER", "リファラ", referrer || "なし", "span2"),
+        stat("GA CLIENT", "GA Client ID", gaId ? gaId[1] : null, "span2"),
+        h("div", { class: "stat ringtile span2" }, ring(pct),
+          h("div", null, h("div", { class: "k" }, "COOKIE DECODE", h("small", null, "判別済み計測系Cookie")),
+            h("div", { class: "v" }, `${known} / ${docCookies.length} 件`))))
     );
   }
 
@@ -325,7 +427,7 @@
       } catch { /* noop */ }
     }
     if (originOnly) rows.push(row("リファラの粒度", originOnly));
-    rows.push(row("クライアントとサーバーの一致", same ? "一致" : "不一致", same ? null : "ブラウザ拡張やリダイレクトで差が出ることがあります"));
+    rows.push(row("クライアントとサーバーの一致", chip(same ? "一致" : "不一致", same ? "ok" : "warn"), same ? null : "ブラウザ拡張やリダイレクトで差が出ることがあります"));
     if (history.length != null) rows.push(row("履歴の長さ (history.length)", history.length));
     const nav = getNav();
     if (nav) {
@@ -378,7 +480,7 @@
 
     return card(
       "Cookie",
-      { badge: `${docCookies.length} 件`, sub: "既知の広告・計測Cookieは意味と値の中身を解読して表示します" },
+      { wide: true, badge: `${docCookies.length} 件`, sub: "既知の広告・計測Cookieは意味と値の中身を解読して表示します" },
       h("div", { class: "dual" }, left, right),
       diff.length ? table(diff) : null
     );
@@ -419,18 +521,18 @@
     const serverTz = S.network.timezone;
     if (clientTz && serverTz) {
       const ok = clientTz === serverTz;
-      rows.push(row("タイムゾーン", ok ? "一致" : "不一致", `ブラウザ: ${clientTz} / IP推定: ${serverTz}${ok ? "" : " (VPN・プロキシ・海外からの接続の可能性)"}`));
+      rows.push(row("タイムゾーン", chip(ok ? "一致" : "不一致", ok ? "ok" : "warn"), `ブラウザ: ${clientTz} / IP推定: ${serverTz}${ok ? "" : " (VPN・プロキシ・海外からの接続の可能性)"}`));
     }
     const al = S.headers["accept-language"];
     if (al) {
       const top = al.split(",")[0].trim();
       const ok = top.toLowerCase().startsWith((navigator.language || "").split("-")[0].toLowerCase());
-      rows.push(row("言語", ok ? "一致" : "不一致", `ブラウザ: ${navigator.language} / Accept-Language先頭: ${top}`));
+      rows.push(row("言語", chip(ok ? "一致" : "不一致", ok ? "ok" : "warn"), `ブラウザ: ${navigator.language} / Accept-Language先頭: ${top}`));
     }
     const uaHeader = S.headers["user-agent"];
     if (uaHeader) {
       const ok = uaHeader === navigator.userAgent;
-      rows.push(row("User-Agent", ok ? "一致" : "不一致", ok ? null : "HTTPヘッダーとnavigator.userAgentが異なります (UA偽装・拡張機能など)"));
+      rows.push(row("User-Agent", chip(ok ? "一致" : "不一致", ok ? "ok" : "warn"), ok ? null : "HTTPヘッダーとnavigator.userAgentが異なります (UA偽装・拡張機能など)"));
     }
     const gpcHeader = S.headers["sec-gpc"];
     rows.push(row("Global Privacy Control", gpcHeader === "1" ? "送信あり" : "送信なし", `ブラウザ側 navigator.globalPrivacyControl: ${navigator.globalPrivacyControl === undefined ? "非対応" : navigator.globalPrivacyControl}`));
@@ -517,7 +619,7 @@
         row("load (ms)", nav.load)
       );
     }
-    return card("ページ・読み込み情報", {}, table(rows));
+    return card("ページ・読み込み情報", { wide: true }, table(rows));
   }
 
   const HEADER_DESC = {
@@ -549,9 +651,106 @@
     const entries = Object.entries(S.headers).sort(([a], [b]) => a.localeCompare(b));
     return card(
       "HTTPリクエストヘッダー (サーバー受信)",
-      { badge: `${entries.length} 件` },
+      { wide: true, badge: `${entries.length} 件` },
       table(entries.map(([k, v]) => row(k, k === "cookie" ? "(上の「Cookie」セクションで表示)" : v, HEADER_DESC[k])))
     );
+  }
+
+  // ---------- 演出 ----------
+  const reduceMotion = mm("(prefers-reduced-motion: reduce)");
+  const GLYPHS = "01ABCDEF<>/\\|#%$";
+
+  // 値が文字化けから確定していくデコード演出
+  function decode(el, ms = 750) {
+    const final = el.textContent;
+    if (!final || reduceMotion) return;
+    const len = final.length, t0 = performance.now();
+    const tick = (t) => {
+      const p = Math.min(1, (t - t0) / ms), fixed = Math.floor(p * len);
+      let out = "";
+      for (let i = 0; i < len; i++) {
+        const c = final[i];
+        out += i < fixed || c === " " ? c : GLYPHS[(Math.random() * GLYPHS.length) | 0];
+      }
+      el.textContent = p < 1 ? out : final;
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
+  // 起動シーケンス (クリック/キーでスキップ可)
+  function startBoot(S) {
+    if (reduceMotion) return Promise.resolve();
+    const n = (S && S.network) || {};
+    const lines = [
+      "WHOAMI//MARKETING  CORE v1.0",
+      `LINK ......... ESTABLISHED  [NODE ${n.colo || "--"}]`,
+      `REQUEST ...... CAPTURED  [${n.httpProtocol || "--"} / ${n.tlsVersion || "--"}]`,
+      "COOKIES ...... DECODING",
+      "CLIENT ....... PROBING",
+      "ALL SYSTEMS NOMINAL",
+    ];
+    const log = h("pre");
+    const el = h("div", { id: "boot", "aria-hidden": "true" }, log, h("div", { class: "skip" }, "CLICK TO SKIP"));
+    document.body.append(el);
+    return new Promise((resolve) => {
+      let i = 0, done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        el.classList.add("out");
+        setTimeout(() => { el.remove(); resolve(); }, 350);
+      };
+      el.addEventListener("click", finish);
+      window.addEventListener("keydown", finish, { once: true });
+      const step = () => {
+        if (done) return;
+        if (i >= lines.length) { setTimeout(finish, 280); return; }
+        log.textContent += lines[i++] + "\n";
+        setTimeout(step, 170);
+      };
+      step();
+    });
+  }
+
+  function fillStatus(S) {
+    const n = (S && S.network) || {};
+    const set = (id, v) => { const e = document.getElementById(id); if (e && v) e.textContent = v; };
+    set("st-node", n.colo);
+    set("st-ip", n.ip);
+  }
+  function tickClock() {
+    const d = new Date(), p = (x) => String(x).padStart(2, "0");
+    const a = document.getElementById("clk-utc"), b = document.getElementById("clk-loc");
+    if (a) a.textContent = `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`;
+    if (b) b.textContent = `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  }
+
+  // 左サイドのセクションナビ + スクロール連動
+  function buildRail(app) {
+    const rail = document.getElementById("rail");
+    const items = [...app.querySelectorAll("[data-title]")];
+    const btns = new Map();
+    rail.replaceChildren(
+      h("div", { class: "rail-h" }, "SECTORS"),
+      ...items.map((it) => {
+        const b = h("button", { type: "button" }, h("span", { class: "c" }, it.id.replace("sec-", "")), it.dataset.title);
+        b.addEventListener("click", () => it.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" }));
+        btns.set(it.id, b);
+        return b;
+      })
+    );
+    if (!("IntersectionObserver" in window)) return;
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) {
+          btns.forEach((b) => b.classList.remove("on"));
+          const b = btns.get(e.target.id);
+          if (b) b.classList.add("on");
+        }
+      }
+    }, { rootMargin: "-15% 0px -70% 0px" });
+    items.forEach((it) => io.observe(it));
   }
 
   // ---------- 描画 ----------
@@ -579,7 +778,14 @@
     ].filter(Boolean);
 
     app.replaceChildren(...parts);
+    buildRail(app);
     bindInteractions();
+  }
+
+  function reveal() {
+    document.querySelectorAll("#app .card, #app .hero").forEach((el, i) => el.style.setProperty("--i", i));
+    document.documentElement.classList.add("ready");
+    document.querySelectorAll("#app [data-decode]").forEach((el) => decode(el));
   }
 
   // ---------- インタラクション ----------
@@ -598,12 +804,12 @@
       if (!el) return;
       try {
         await navigator.clipboard.writeText(el.textContent);
-        toast("コピーしました");
+        toast("COPIED");
       } catch { /* クリップボード不可は無視 */ }
     });
 
     const input = document.getElementById("filter");
-    const apply = () => {
+    input.addEventListener("input", () => {
       const q = input.value.trim().toLowerCase();
       document.querySelectorAll("#app section.card").forEach((sec) => {
         const trs = sec.querySelectorAll("tr");
@@ -613,16 +819,21 @@
           tr.classList.toggle("hidden", !hit);
           if (hit) visible++;
         });
-        sec.classList.toggle("hidden", !!q && trs.length > 0 && visible === 0);
-        sec.style.display = sec.classList.contains("hidden") ? "none" : "";
+        sec.style.display = q && trs.length > 0 && visible === 0 ? "none" : "";
       });
-    };
-    input.addEventListener("input", apply);
+    });
   }
 
   document.getElementById("reload").addEventListener("click", () => location.reload());
-  // 要約カードの.summaryは.cardではないため絞り込み対象外(常時表示)
-  main().catch((err) => {
+
+  // ---------- 起動 ----------
+  const S0 = readServer();
+  if (!reduceMotion) document.documentElement.classList.add("js-anim");
+  fillStatus(S0);
+  tickClock();
+  setInterval(tickClock, 1000);
+  const rendered = main().catch((err) => {
     document.getElementById("app").replaceChildren(h("p", { class: "loading" }, `表示に失敗しました: ${err && err.message}`));
   });
+  Promise.all([rendered, startBoot(S0)]).then(reveal, reveal);
 })();

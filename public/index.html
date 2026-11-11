@@ -4,31 +4,54 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#03070b">
   <title>Whoami Marketing | ページ訪問時に取得できる情報</title>
   <meta name="description" content="このページを開いた時点で取得できるリファラ、URLパラメータ、Cookie、ブラウザ・ネットワーク情報を一覧表示します。">
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <header class="top">
-    <div class="wrap">
-      <h1>Whoami <span>Marketing</span></h1>
-      <p class="lead">このページを開いた瞬間にサイト側から見える情報の一覧です。計測タグの動作確認、流入元の切り分け、広告パラメータの引き継ぎチェックに使えます。</p>
-      <div class="tools">
-        <input id="filter" type="search" placeholder="項目名・値で絞り込み (例: utm, _ga, referer)" aria-label="絞り込み">
-        <a class="btn" href="/api/info" target="_blank" rel="noopener">サーバー側JSON</a>
-        <button class="btn" id="reload" type="button">再取得</button>
-      </div>
+  <div class="fx fx-grid" aria-hidden="true"></div>
+  <div class="fx fx-scan" aria-hidden="true"></div>
+  <div class="fx fx-vig" aria-hidden="true"></div>
+
+  <header class="hud-top">
+    <div class="brand">
+      <span class="reticle" aria-hidden="true"></span>
+      <h1>WHOAMI<i>//</i>MARKETING</h1>
+      <span class="tag">VISITOR TELEMETRY</span>
+    </div>
+    <div class="status" aria-label="ステータス">
+      <span class="pill"><b class="dot"></b>LINK ONLINE</span>
+      <span class="pill dim">NODE <b id="st-node">—</b></span>
+      <span class="pill dim hide-s">IP <b id="st-ip">—</b></span>
+      <span class="pill dim">UTC <b id="clk-utc">--:--:--</b></span>
+      <span class="pill dim hide-s">LOCAL <b id="clk-loc">--:--:--</b></span>
     </div>
   </header>
 
-  <main class="wrap" id="app" aria-live="polite">
-    <p class="loading">読み込み中…</p>
-  </main>
+  <div class="layout">
+    <nav class="rail" id="rail" aria-label="セクション移動"></nav>
 
-  <footer class="wrap foot">
-    <p>表示内容はあなたのブラウザとこのサイトのCloudflare上のサーバー間でのみ処理され、保存・送信はされません。位置情報はIPアドレスからの推定値で、精度は高くありません。</p>
-    <p><a href="https://github.com/manji6/whoami-marketing" target="_blank" rel="noopener">ソースコード (GitHub)</a></p>
-  </footer>
+    <div class="col">
+      <p class="lead">このページを開いた瞬間にサイト側から見える情報の一覧です。計測タグの動作確認、流入元の切り分け、広告パラメータの引き継ぎチェックに使えます。</p>
+
+      <div class="console">
+        <label class="prompt" for="filter">&gt;_</label>
+        <input id="filter" type="search" placeholder="FILTER  項目名・値で絞り込み (例: utm, _ga, referer)" autocomplete="off" spellcheck="false">
+        <a class="btn" href="/api/info" target="_blank" rel="noopener">JSON</a>
+        <button class="btn" id="reload" type="button">RESCAN</button>
+      </div>
+
+      <main id="app" aria-live="polite">
+        <p class="loading">読み込み中…</p>
+      </main>
+
+      <footer class="foot">
+        <p>表示内容はあなたのブラウザとこのサイトのCloudflare上のサーバー間でのみ処理され、保存・送信はされません。位置情報はIPアドレスからの推定値で、精度は高くありません。</p>
+        <p><a href="https://github.com/manji6/whoami-marketing" target="_blank" rel="noopener">SOURCE // GitHub</a></p>
+      </footer>
+    </div>
+  </div>
 
   <!-- サーバー(Cloudflare Workers)がナビゲーション時のリクエスト情報をここに埋め込む -->
   <script id="server-data" type="application/json">null</script>
