@@ -12,6 +12,8 @@ const SECURITY_HEADERS = {
   "x-robots-tag": "noindex",
 };
 const NO_STORE = { "cache-control": "no-store" };
+// CSS/JSは常に再検証させる (更新が即座に反映されるように)
+const NO_CACHE = { "cache-control": "no-cache" };
 
 const respond = (body, type, extra = {}) =>
   new Response(body, { headers: { "content-type": type, ...SECURITY_HEADERS, ...extra } });
@@ -44,9 +46,9 @@ export default {
       }
 
       case "/style.css":
-        return respond(styleCss, "text/css; charset=utf-8", { "cache-control": "public, max-age=300" });
+        return respond(styleCss, "text/css; charset=utf-8", NO_CACHE);
       case "/app.js":
-        return respond(appJs, "text/javascript; charset=utf-8", { "cache-control": "public, max-age=300" });
+        return respond(appJs, "text/javascript; charset=utf-8", NO_CACHE);
 
       default:
         return new Response("Not Found", {

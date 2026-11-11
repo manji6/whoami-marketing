@@ -225,7 +225,7 @@ tr.hidden { display: none; }
 /* ---------- 登場アニメーション ---------- */
 .js-anim:not(.ready) .card, .js-anim:not(.ready) .hero { opacity: 0; }
 .js-anim.ready .card, .js-anim.ready .hero { animation: panelin .7s cubic-bezier(.2, .7, .2, 1) backwards; animation-delay: calc(var(--i, 0) * 80ms); }
-@keyframes panelin { from { opacity: 0; transform: translateY(14px); } }
+@keyframes panelin { from { opacity: 0; } }
 
 /* ---------- レスポンシブ ---------- */
 @media (max-width: 1100px) {
