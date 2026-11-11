@@ -1,0 +1,12 @@
+{
+  "name": "whoami-marketing",
+  "private": true,
+  "description": "ページを開いた時点で取得できるマーケティング関連情報(リファラ・URLパラメータ・Cookie・ブラウザ/サーバー情報)を一覧表示するサイト",
+  "scripts": {
+    "dev": "wrangler pages dev",
+    "deploy": "wrangler pages deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}

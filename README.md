@@ -1,0 +1,42 @@
+# whoami-marketing
+
+ページを開いた時点で取得できるマーケティング関連情報を一覧表示するサイトです。
+計測タグの動作確認、流入元の切り分け、広告パラメータの引き継ぎチェックを想定しています。
+
+## 表示する情報
+
+- **流入元・リファラ**: `document.referrer` とサーバー受信の `Referer` ヘッダーの比較、流入チャネルの簡易推定、ナビゲーション種別
+- **URLパラメータ**: UTM、gclid / fbclid / msclkid などの広告クリックIDを判別して表示
+- **Cookie**: ブラウザ側 (`document.cookie`) とサーバー受信の `Cookie` ヘッダーを並べて表示。`_ga` `_fbp` `_gcl_*` などは意味と中身 (Client ID・作成日時など) を解読
+- **接続情報 (Cloudflare)**: IP、国・地域・市区町村、ASN、データセンター、TLS/HTTPバージョン など
+- **照合**: タイムゾーン・言語・User-Agent のブラウザ側とサーバー側の差分
+- **ブラウザ/デバイス**: UA Client Hints、画面、言語、接続種別、GPC / DNT など
+- **全リクエストヘッダー** (`/api/info` でサーバー側情報をJSONでも取得可能)
+
+値は表示のみで、保存・外部送信は行いません。
+
+## 構成
+
+```
+public/            静的ファイル (HTML/CSS/JS, _headers)
+functions/index.js "/" にナビゲーション時のリクエスト情報をHTMLへ埋め込む (Pages Functions)
+functions/api/info.js  GET /api/info サーバー側情報のJSON
+lib/collect.js     サーバー側で情報を集める処理
+```
+
+## ローカル実行
+
+```bash
+npm install
+npm run dev   # http://localhost:8788
+```
+
+ローカルでは `request.cf` の値 (国・ASN・Bot等) はダミーです。
+
+## デプロイ (Cloudflare Pages)
+
+```bash
+npx wrangler pages deploy --project-name whoami-marketing
+```
+
+GitHub Actions (`.github/workflows/deploy.yml`) は、リポジトリの Secrets に `CLOUDFLARE_API_TOKEN` (Cloudflare Pages: Edit 権限) と `CLOUDFLARE_ACCOUNT_ID` を設定すると、`main` への push で自動デプロイします。未設定の場合はデプロイ手順をスキップします。
