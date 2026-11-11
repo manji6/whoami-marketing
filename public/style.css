@@ -125,18 +125,18 @@ button, input { font: inherit; }
 .hero { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; }
 .card.wide { grid-column: 1 / -1; }
 
-.panel { position: relative; filter: drop-shadow(0 0 10px rgba(34, 229, 255, .07)); }
+.panel { position: relative; }
 .panel::before, .panel::after { content: ""; position: absolute; pointer-events: none; }
 .panel::before {
   inset: 0; background: linear-gradient(135deg, rgba(34, 229, 255, .75), rgba(34, 229, 255, .16) 40%, rgba(34, 229, 255, .3));
   clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
 }
 .panel::after {
-  inset: 1px; background: linear-gradient(180deg, #081c27, #05111a);
+  inset: 1px; background: linear-gradient(180deg, #081c27, #05111a); box-shadow: inset 0 0 28px rgba(34, 229, 255, .06);
   clip-path: polygon(calc(var(--c) - 1px) 0, 100% 0, 100% calc(100% - var(--c) + 1px), calc(100% - var(--c) + 1px) 100%, 0 100%, 0 calc(var(--c) - 1px));
 }
 .panel > * { position: relative; z-index: 1; }
-.panel > .tick { position: absolute; width: 11px; height: 11px; border: 0 solid var(--cy); z-index: 2; filter: drop-shadow(0 0 4px var(--cy)); }
+.panel > .tick { position: absolute; width: 11px; height: 11px; border: 0 solid var(--cy); z-index: 2; }
 .tick.tr { top: -1px; right: -1px; border-top-width: 2px; border-right-width: 2px; }
 .tick.bl { bottom: -1px; left: -1px; border-bottom-width: 2px; border-left-width: 2px; }
 
@@ -224,8 +224,8 @@ tr.hidden { display: none; }
 
 /* ---------- 登場アニメーション ---------- */
 .js-anim:not(.ready) .card, .js-anim:not(.ready) .hero { opacity: 0; }
-.js-anim.ready .card, .js-anim.ready .hero { animation: panelin .7s cubic-bezier(.2, .7, .2, 1) both; animation-delay: calc(var(--i, 0) * 80ms); }
-@keyframes panelin { from { opacity: 0; transform: translateY(14px); filter: brightness(2.2) blur(2px); } }
+.js-anim.ready .card, .js-anim.ready .hero { animation: panelin .7s cubic-bezier(.2, .7, .2, 1) backwards; animation-delay: calc(var(--i, 0) * 80ms); }
+@keyframes panelin { from { opacity: 0; transform: translateY(14px); } }
 
 /* ---------- レスポンシブ ---------- */
 @media (max-width: 1100px) {
